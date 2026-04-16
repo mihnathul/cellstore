@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mihnathul/cellstore/schemas/timeseries.schema.json",
+  "title": "Timeseries",
+  "description": "Canonical cycler measurements (Arbin / Maccor / Bitrode / Digatron exports). One row per measurement sample per test. Stored as rows in harmonized/timeseries.parquet.",
+  "type": "object",
+  "properties": {
+    "test_id": {"type": "string", "description": "FK to tests (joins on test_id)."},
+    "cycle_number": {"type": "integer", "minimum": 0},
+    "step_number": {"type": ["integer", "null"], "minimum": 0},
+    "step_type": {
+      "type": ["string", "null"],
+      "enum": ["charge", "discharge", "rest", "pulse", "ocv", "unknown", null]
+    },
+    "timestamp_s": {"type": "number", "description": "Seconds from test start."},
+    "voltage_V": {"type": ["number", "null"]},
+    "current_A": {
+      "type": ["number", "null"],
+      "description": "Positive = charge, negative = discharge."
+    },
+    "temperature_C": {"type": ["number", "null"]},
+    "capacity_Ah": {"type": ["number", "null"]},
+    "energy_Wh": {"type": ["number", "null"]}
+  },
+  "required": ["test_id", "cycle_number", "timestamp_s"],
+  "additionalProperties": true
+}

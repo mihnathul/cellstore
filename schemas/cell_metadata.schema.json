@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mihnathul/cellstore/schemas/cell_metadata.schema.json",
+  "title": "CellMetadata",
+  "description": "One cell's metadata record (specs, chemistry, form factor). Stored as JSON at data/harmonized/cells/{cell_id}.json — one file per cell.",
+  "type": "object",
+  "properties": {
+    "cell_id": {
+      "type": "string",
+      "description": "Canonical cellstore identifier (unique across all sources)."
+    },
+    "source": {
+      "type": "string",
+      "enum": ["CALCE", "HNEI", "MATR", "NASA", "ORNL", "SNL"],
+      "description": "Dataset source."
+    },
+    "source_cell_id": {"type": ["string", "null"], "description": "Identifier in the source dataset."},
+    "manufacturer": {"type": ["string", "null"]},
+    "model_number": {"type": ["string", "null"]},
+    "chemistry": {
+      "type": "string",
+      "enum": ["LFP", "NMC", "NCA", "LCO", "LMO", "LTO", "mixed"]
+    },
+    "cathode": {"type": ["string", "null"]},
+    "anode": {"type": ["string", "null"]},
+    "electrolyte": {"type": ["string", "null"]},
+    "form_factor": {
+      "type": "string",
+      "enum": ["cylindrical", "pouch", "prismatic", "coin"]
+    },
+    "nominal_capacity_Ah": {"type": ["number", "null"], "minimum": 0},
+    "nominal_voltage_V": {"type": ["number", "null"], "minimum": 0},
+    "max_voltage_V": {"type": ["number", "null"], "minimum": 0},
+    "min_voltage_V": {"type": ["number", "null"], "minimum": 0}
+  },
+  "required": ["cell_id", "source", "chemistry", "form_factor"],
+  "additionalProperties": false
+}

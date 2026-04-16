@@ -1,0 +1,73 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env
+
+# Editors / IDEs
+.vscode/
+!.vscode/settings.json.example
+.idea/
+*.swp
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Coverage
+.coverage
+htmlcov/
+
+# pip
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Raw data (keep README.md files for download instructions)
+data/raw/**/*.mat
+data/raw/**/*.csv
+data/raw/**/*.xlsx
+data/raw/**/*.h5
+data/raw/**/*.hdf5
+data/raw/**/*.zip
+data/raw/**/*.parquet
+data/raw/**/*.txt
+
+# ORNL Leaf is the one bundled source — un-ignore its CSVs
+!data/raw/ornl_leaf/*.csv
+
+# Harmonized outputs — users regenerate locally by running the demo.
+# Exception: ORNL_LEAF and HNEI are bundled (ORNL raw CSVs ship in the
+# repo so the demo works on fresh clone; HNEI harmonized ships so the
+# v0.1 bundle spans both sources). timeseries.parquet is tracked as-is.
+# Users who regenerate with additional sources (e.g. MATR) will see a
+# local diff — that's their work, not meant to be committed.
+data/harmonized/cells/*.json
+data/harmonized/tests/*.json
+data/harmonized/timeseries/
+!data/harmonized/cells/ORNL_LEAF_2013.json
+!data/harmonized/tests/ORNL_LEAF_2013_HPPC_*.json
+!data/harmonized/cells/HNEI_PANASONIC_18650PF.json
+!data/harmonized/tests/HNEI_PANASONIC_18650PF_HPPC_*.json
+
+# Other derived data
+data/params/
+data/exports/
+*.parquet
+!schemas/*.parquet
+!data/harmonized/timeseries.parquet
+
+# Streamlit runtime secrets (keep config.toml)
+.streamlit/secrets.toml

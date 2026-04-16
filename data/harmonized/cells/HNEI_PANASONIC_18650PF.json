@@ -1,0 +1,16 @@
+{
+  "cell_id": "HNEI_PANASONIC_18650PF",
+  "source": "HNEI",
+  "source_cell_id": "Panasonic_NCR18650PF",
+  "manufacturer": "Panasonic",
+  "model_number": "NCR18650PF",
+  "chemistry": "NCA",
+  "cathode": null,
+  "anode": "graphite",
+  "electrolyte": null,
+  "form_factor": "cylindrical",
+  "nominal_capacity_Ah": 2.9,
+  "nominal_voltage_V": 3.6,
+  "max_voltage_V": 4.2,
+  "min_voltage_V": 2.5
+}

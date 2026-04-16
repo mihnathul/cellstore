@@ -1,0 +1,16 @@
+{
+  "cell_id": "ORNL_LEAF_2013",
+  "source": "ORNL",
+  "source_cell_id": "2013_Nissan_Leaf",
+  "manufacturer": "AESC",
+  "model_number": null,
+  "chemistry": "mixed",
+  "cathode": null,
+  "anode": null,
+  "electrolyte": null,
+  "form_factor": "pouch",
+  "nominal_capacity_Ah": 33.1,
+  "nominal_voltage_V": null,
+  "max_voltage_V": 4.2,
+  "min_voltage_V": 3.0
+}

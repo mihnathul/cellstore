@@ -1,0 +1,78 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cellstore"
+version = "0.1.0"
+description = "Harmonizes battery test datasets into one canonical schema"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [
+    { name = "Mihna Neerulpan" },
+]
+keywords = [
+    "battery",
+    "battery-data",
+    "battery-testing",
+    "battery-degradation",
+    "battery-aging",
+    "battery-cycling",
+    "bms",
+    "battery-management-system",
+    "lithium-ion",
+    "lfp",
+    "nmc",
+    "nca",
+    "electrochemistry",
+    "data-harmonization",
+    "open-data",
+    "hppc",
+    "parquet",
+    "json-schema",
+    "open-schema",
+    "canonical-schema",
+    "soh",
+    "state-of-health",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Manufacturing",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Database",
+]
+
+dependencies = [
+    "pandas>=2.0",
+    "pyarrow>=15.0",          # parquet
+    "pandera>=0.18",          # runtime dataframe validation
+    "numpy>=1.26",
+    "scipy>=1.12",            # HNEI .mat
+    "h5py>=3.8",              # MATR .mat (MATLAB v7.3 / HDF5)
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.3",
+]
+viewer = [
+    "streamlit>=1.20",
+    "plotly>=5.0",
+    "duckdb>=0.10",           # parquet queries in the viewer
+]
+
+[project.urls]
+Repository = "https://github.com/mihnathul/cellstore"
+Issues = "https://github.com/mihnathul/cellstore/issues"
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
