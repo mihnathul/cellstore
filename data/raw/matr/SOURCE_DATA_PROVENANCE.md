@@ -8,7 +8,7 @@ Download required. Place the three batch `.mat` files directly in this directory
 |---|---|
 | Cell | A123 APR18650M1A, LFP chemistry, 1.1 Ah |
 | Form factor | cylindrical (18650) |
-| Cells tested | 124 (119 after cellstore's documented exclusions) |
+| Cells tested | 124 (119 after celljar's documented exclusions) |
 | Test types | Cycling under various 2-step fast-charge policies, 4C CC-CV discharge |
 | Raw format | MATLAB v7.3 (HDF5-backed) |
 | Size | ~4 GB total across 3 batches |
@@ -25,9 +25,9 @@ DOI: `10.1038/s41560-019-0356-8` (associated Nature Energy paper). Direct downlo
     2017-06-30_batchdata_updated_struct_errorcorrect.mat   (~1.4 GB, batch 2)
     2018-04-12_batchdata_updated_struct_errorcorrect.mat   (~1.0 GB, batch 3)
 
-Format is MATLAB v7.3 (HDF5-backed). cellstore parses these with `h5py` — `scipy.io.loadmat` does **not** support v7.3.
+Format is MATLAB v7.3 (HDF5-backed). celljar parses these with `h5py` — `scipy.io.loadmat` does **not** support v7.3.
 
-Partial data is fine: cellstore processes whichever of the 3 batches are present; they don't all have to be downloaded.
+Partial data is fine: celljar processes whichever of the 3 batches are present; they don't all have to be downloaded.
 
 ## Test protocol
 
@@ -35,7 +35,7 @@ Partial data is fine: cellstore processes whichever of the 3 batches are present
 
 ## Known exclusions
 
-cellstore skips the following batch-2 cells — they are continuations of batch-1 cells that were moved after a channel fault, per Severson's errata:
+celljar skips the following batch-2 cells — they are continuations of batch-1 cells that were moved after a channel fault, per Severson's errata:
 
     b2c7, b2c8, b2c9, b2c15, b2c16
 

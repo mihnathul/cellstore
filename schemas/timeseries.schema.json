@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/mihnathul/cellstore/schemas/timeseries.schema.json",
+  "$id": "https://github.com/mihnathul/celljar/schemas/timeseries.schema.json",
   "title": "Timeseries",
   "description": "Canonical cycler measurements (Arbin / Maccor / Bitrode / Digatron exports). One row per measurement sample per test. Stored as rows in harmonized/timeseries.parquet.",
   "type": "object",
@@ -16,11 +16,18 @@
     "voltage_V": {"type": ["number", "null"]},
     "current_A": {
       "type": ["number", "null"],
-      "description": "Positive = charge, negative = discharge."
+      "description": "Positive = charge (current into the cell), negative = discharge."
     },
     "temperature_C": {"type": ["number", "null"]},
-    "capacity_Ah": {"type": ["number", "null"]},
-    "energy_Wh": {"type": ["number", "null"]}
+    "coulomb_count_Ah": {
+      "type": ["number", "null"],
+      "description": "Cycler's running signed coulomb count (∫I dt) in Ah. Positive = charge into cell, negative = discharge. Per-cycle capacity scalars live in cycle_summary, not here."
+    },
+    "energy_Wh": {"type": ["number", "null"]},
+    "displacement_um": {
+      "type": ["number", "null"],
+      "description": "Cell-surface displacement / swelling, micrometers. Null for sources without mechanical expansion measurement; populated for e.g. Mohtat 2021 (Keyence laser displacement, synchronous with V/I/T)."
+    }
   },
   "required": ["test_id", "cycle_number", "timestamp_s"],
   "additionalProperties": true

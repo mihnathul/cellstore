@@ -29,7 +29,7 @@ DOI: `10.5281/zenodo.2580327`. See also GitHub: https://github.com/batterysim/ni
     cell-discharge-bitrode-2c.csv
     cell-discharge-bitrode-3c.csv
 
-cellstore uses the three HPPC files, producing three `test_type: hppc` tests.
+celljar uses the three HPPC files, producing three `test_type: hppc` tests.
 
 ## Test protocol
 

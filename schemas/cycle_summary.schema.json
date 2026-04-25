@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mihnathul/celljar/schemas/cycle_summary.schema.json",
+  "title": "CycleSummary",
+  "description": "Per-cycle (or per-checkpoint) aggregated aging metrics. One row per (test_id, cycle_or_time_index). Used for aging studies that publish summary metrics (capacity-vs-cycle, R_DC-vs-FEC, etc.) rather than raw cycler timeseries. Stored as rows in harmonized/cycle_summary.parquet.",
+  "type": "object",
+  "properties": {
+    "test_id": {
+      "type": "string",
+      "description": "FK to tests (joins on test_id). Required."
+    },
+    "cell_id": {
+      "type": "string",
+      "description": "FK to cells. Denormalized for filter ergonomics (avoids a join to test_metadata for common capacity-fade / R-growth plots). Required."
+    },
+    "cycle_number": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Integer cycle index when the source reports per-cycle data. Nullable because calendar-aging sources and FEC-indexed cycle sources (e.g. Naumann 2021) have no integer cycle count."
+    },
+    "equivalent_full_cycles": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Cumulative throughput expressed as full-equivalent cycles (FEC = cumulative discharge Ah / nominal_capacity_Ah). Standard x-axis for mixed-DoD aging studies. Null for calendar aging."
+    },
+    "elapsed_time_s": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Seconds since begin-of-life (BOL) / test start. Primary x-axis for calendar aging (Naumann storage time). Optional for cycle aging."
+    },
+    "capacity_Ah": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Discharge capacity measured at this checkpoint. Protocol details (CC-only vs CC+CV, C-rate, temperature) belong on test_metadata."
+    },
+    "capacity_retention_pct": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 150,
+      "description": "Capacity normalized to BOL, as a percentage (0..150). Convenience field; derivable from capacity_Ah / capacity_Ah[first checkpoint]."
+    },
+    "resistance_dc_ohm": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "DC pulse resistance. Interpret together with resistance_dc_pulse_duration_s and resistance_dc_soc_pct."
+    },
+    "resistance_dc_pulse_duration_s": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Pulse width used to compute resistance_dc_ohm (e.g. 10.0 for the common R_DC,10s metric)."
+    },
+    "resistance_dc_soc_pct": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 100,
+      "description": "SOC at which the DC pulse was applied. Naumann-style sources apply the pulse at a fixed checkup SOC."
+    },
+    "energy_Wh": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Discharge energy over the cycle/checkpoint."
+    },
+    "coulombic_efficiency": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 2,
+      "description": "Discharge Ah / charge Ah for the cycle. Dimensionless, typically 0.95-1.0."
+    },
+    "temperature_C_mean": {
+      "type": ["number", "null"],
+      "description": "Mean cell (or chamber) temperature over the cycle / checkpoint."
+    }
+  },
+  "required": ["test_id", "cell_id"],
+  "additionalProperties": true
+}

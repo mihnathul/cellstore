@@ -1,9 +1,20 @@
 # Changelog
 
-All notable changes to cellstore are documented here.
+All notable changes to celljar are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.2.0] - 2026-04-25
+
+- Renamed `cellstore` → `celljar`.
+- Added sources: CLO, BILLS, MOHTAT, NASA PCoE, SNL Preger, Naumann, Ecker 2015 (stub). MATR raw bundle now distributed via HuggingFace.
+- New `cycle_summary` entity (per-cycle aggregates).
+- HuggingFace Dataset distribution at `huggingface.co/datasets/mihnathul/celljar`.
+- Per-test provenance (`source_doi`, `source_citation`, `source_license`) carried as columns.
+- Internal pipeline migrated to Polars; parquet uses zstd compression.
+- Harmonizers decomposed into a uniform pipeline pattern.
+- Streamlit viewer split into focused modules; HuggingFace is the default source.
 
 ## [0.1.0] — 2026-04-15
 
@@ -13,7 +24,7 @@ Initial release.
 
 - Canonical three-entity schema: `cell_metadata`, `test_metadata`, `timeseries`
 - Defined as JSON Schema files in `schemas/` (authoritative contract)
-- Mirrored as Pandera models in `cellstore/harmonize/harmonize_schema.py` for
+- Mirrored as Pandera models in `celljar/harmonize/harmonize_schema.py` for
   runtime DataFrame validation inside the Python pipeline
 - `test_metadata` carries `soh_pct`, `soh_method`, and `cycle_count_at_test`
   fields for aging context (methodology will iterate — see roadmap)

@@ -16,11 +16,11 @@ Download required. Place the `.mat` files directly in this directory.
 
     https://data.mendeley.com/datasets/wykht8y7tg
 
-DOI: `10.17632/wykht8y7tg.1`. The full dataset also includes UDDS, US06, LA92, and NN drive cycles plus charge/pause/cycle files — cellstore's v0.1 ingester ignores anything that doesn't match the HPPC filename pattern, so leaving them in this directory is fine.
+DOI: `10.17632/wykht8y7tg.1`. The full dataset also includes UDDS, US06, LA92, and NN drive cycles plus charge/pause/cycle files — celljar's v0.1 ingester ignores anything that doesn't match the HPPC filename pattern, so leaving them in this directory is fine.
 
 ## Expected filenames
 
-cellstore scans for files matching:
+celljar scans for files matching:
 
     {date} {temperature}degC_(5)?[Pp]ulse_HPPC*.mat
 

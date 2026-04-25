@@ -1,0 +1,233 @@
+"""Harmonize MATR (Severson 2019) fast-charge LFP dataset to celljar canonical schema.
+
+MATR is the canonical LFP fast-charging cycle-life dataset: 124 A123 APR18650M1A
+cells cycled under 72 one- or two-step fast-charge policies at 30 degC chamber,
+with a common 4C CC-CV discharge. Each cell becomes one cell_metadata record and
+one cycling test (all cycles concatenated into a single continuous timeseries).
+
+Reference:
+    Severson et al., "Data-driven prediction of battery cycle life before
+    capacity degradation," Nature Energy 4, 383-391 (2019).
+    https://data.matr.io/1/
+"""
+
+import re
+
+import numpy as np
+import polars as pl
+
+
+# Parse the leading C-rate from MATR charge_policy strings such as
+# "3.6C(80%)-3.6C" or "6C(40%)-3C" — first float before the literal 'C'.
+_C_RATE_RE = re.compile(r"^([\d.]+)C")
+
+
+def _parse_c_rate(policy: str) -> float:
+    """Return the first-step C-rate from a MATR charge_policy string, or NaN."""
+    m = _C_RATE_RE.match(policy or "")
+    return float(m.group(1)) if m else None
+
+
+def _cell_metadata(cell_id: str, source_cell_id: str) -> dict:
+    """All 124 MATR cells are the same A123 APR18650M1A model."""
+    return {
+        "cell_id": cell_id,                   # e.g. MATR_B1C0
+        "source": "MATR",
+        "source_cell_id": source_cell_id,     # lowercase batch-cell, e.g. b1c0
+        "manufacturer": "A123 Systems",
+        "model_number": "APR18650M1A",
+        "chemistry": "LFP",
+        "cathode": "LFP",                     # LiFePO4
+        "anode": "graphite",
+        "electrolyte": None,                  # proprietary
+        "form_factor": "cylindrical",
+        "nominal_capacity_Ah": 1.1,
+        "nominal_voltage_V": 3.3,
+        "max_voltage_V": 3.6,
+        "min_voltage_V": 2.0,
+    }
+
+
+# Per-source provenance (DOI, URL, citation, license) applied to each test_metadata record.
+_SOURCE_PROVENANCE = {
+    "source_doi": "10.1038/s41560-019-0356-8",
+    "source_url": "https://data.matr.io/1/projects/5c48dd2bc625d700019f3204",
+    "source_citation": (
+        "Severson, K. A., Attia, P. M., Jin, N., et al. (2019). "
+        "Data-driven prediction of battery cycle life before capacity degradation. "
+        "Nature Energy 4, 383-391. https://doi.org/10.1038/s41560-019-0356-8"
+    ),
+    "source_license": "CC-BY-4.0",
+    "source_license_url": "https://creativecommons.org/licenses/by/4.0/",
+}
+
+
+def _classify_step(current_A: np.ndarray, threshold_A: float = 0.01) -> np.ndarray:
+    """Map per-sample current to step_type: positive -> charge, negative ->
+    discharge, |I| < threshold -> rest. Threshold in amps."""
+    step = np.empty(current_A.shape, dtype=object)
+    step[:] = "rest"
+    step[current_A > threshold_A] = "charge"
+    step[current_A < -threshold_A] = "discharge"
+    return step
+
+
+def _build_cycle_frame(
+    test_id: str,
+    cycle_number: int,
+    cyc: dict,
+    time_offset_s: float,
+) -> tuple[pl.DataFrame, float]:
+    """Build one cycle's DataFrame slice; return (df, new_time_offset).
+
+    MATR per-cycle arrays: I (A), V (V), Qc/Qd (Ah, per-cycle cumulative),
+    T (degC), t (minutes, per-cycle relative).
+    """
+    t_min = np.asarray(cyc.get("t", np.array([])), dtype=float)
+    n = t_min.size
+    if n == 0:
+        return pl.DataFrame(), time_offset_s
+
+    t_s = t_min * 60.0 + time_offset_s
+    new_offset = float(t_s[-1]) + 1.0  # 1s gap between cycles
+
+    current_A = np.asarray(cyc.get("I", np.full(n, np.nan)), dtype=float)
+    voltage_V = np.asarray(cyc.get("V", np.full(n, np.nan)), dtype=float)
+    temperature_C = np.asarray(cyc.get("T", np.full(n, np.nan)), dtype=float)
+    Qc = np.asarray(cyc.get("Qc", np.full(n, np.nan)), dtype=float)
+    Qd = np.asarray(cyc.get("Qd", np.full(n, np.nan)), dtype=float)
+    # Signed running coulomb count (charge accumulated minus discharge removed).
+    coulomb_count_Ah = Qc - Qd
+
+    df = pl.DataFrame({
+        "step_type": _classify_step(current_A),
+        "timestamp_s": t_s,
+        "voltage_V": voltage_V,
+        "current_A": current_A,
+        "temperature_C": temperature_C,
+        "coulomb_count_Ah": coulomb_count_Ah,
+        "energy_Wh": np.full(n, np.nan),  # not stored in MATR raw
+        "displacement_um": np.full(n, np.nan),  # cycler-only source, no gauge
+    })
+    df = df.with_columns([
+        pl.lit(test_id).alias("test_id"),
+        pl.lit(cycle_number, dtype=pl.Int64).alias("cycle_number"),
+        pl.lit(None, dtype=pl.Int64).alias("step_number"),
+    ])
+    return df, new_offset
+
+
+def harmonize(ingested_data: dict, capacity_Ah: float = 1.1) -> dict:
+    """Harmonize MATR ingested dict to canonical celljar tables.
+
+    Args:
+        ingested_data: Dict from matr.ingest() — {batch_cell_key: {...}}
+                       where each value has 'cycle_life', 'charge_policy',
+                       'summary', 'cycles', 'source_file', 'batch'.
+        capacity_Ah: Reference capacity (1.1 Ah for APR18650M1A). Not stored;
+                     cell.nominal_capacity_Ah is the canonical reference.
+
+    Returns:
+        Dict with cell_metadata, cells_metadata, test_metadata, timeseries.
+    """
+    timeseries_by_test = {}
+    test_metadata = []
+    cells_metadata = []
+
+    for batch_cell, cell_payload in ingested_data.items():
+        source_cell_id = batch_cell                           # e.g. b1c0
+        cell_id = f"MATR_{batch_cell.upper()}"                # e.g. MATR_B1C0
+        test_id = f"{cell_id}_CYCLING"
+
+        cell_meta = _cell_metadata(cell_id, source_cell_id)
+        cells_metadata.append(cell_meta)
+
+        cycles = cell_payload.get("cycles", {}) or {}
+        charge_policy = cell_payload.get("charge_policy", "") or ""
+        cycle_life = cell_payload.get("cycle_life", None)
+
+        # Cycles keyed by string ints; sort numerically.
+        try:
+            cycle_keys_sorted = sorted(cycles.keys(), key=lambda k: int(k))
+        except (TypeError, ValueError):
+            cycle_keys_sorted = sorted(cycles.keys())
+
+        rows = []
+        time_offset = 0.0
+        for cyc_key in cycle_keys_sorted:
+            try:
+                cycle_number = int(cyc_key)
+            except (TypeError, ValueError):
+                continue
+            cyc = cycles[cyc_key]
+            if not cyc:
+                continue
+            sub_df, time_offset = _build_cycle_frame(
+                test_id, cycle_number, cyc, time_offset
+            )
+            if sub_df.height > 0:
+                rows.append(sub_df)
+
+        if not rows:
+            continue
+
+        df = pl.concat(rows, how="vertical")
+        timeseries_by_test[test_id] = df
+
+        # num_cycles: prefer reported cycle_life, else count of cycle dict.
+        if cycle_life is not None and np.isfinite(cycle_life):
+            num_cycles = int(cycle_life)
+        else:
+            num_cycles = len(cycle_keys_sorted)
+
+        c_rate_charge = _parse_c_rate(charge_policy)
+
+        sample_dt = np.diff(df["timestamp_s"].to_numpy())
+        test_metadata.append({
+            "test_id": test_id,
+            "cell_id": cell_id,
+            "test_type": "cycle_aging",
+            # Chamber set-point per Severson et al. 2019 §Methods: "All cells
+            # were cycled in a temperature-controlled environmental chamber set
+            # to 30 °C." Per-sample temperature_C in the timeseries will differ
+            # (surface heating during 4C discharge); the min/max here reflect
+            # the nominal chamber set-point, not observed cell temperature.
+            "temperature_C_min": 30.0,
+            "temperature_C_max": 30.0,
+            "soc_range_min": None,
+            "soc_range_max": None,
+            "soc_step": None,
+            "c_rate_charge": c_rate_charge,
+            "c_rate_discharge": 4.0,                   # 4C CC-CV discharge, all cells
+            "protocol_description": (
+                f"Fast-charge aging at 30 degC. Charge policy: {charge_policy}. "
+                f"4C discharge. Cycled to 80% capacity retention (EOL)."
+            ),
+            "num_cycles": num_cycles,
+            # Cycling tests span a wide SOH range within one test (100% -> 80%);
+            # a scalar soh_pct is not meaningful. Leave null; consumers can
+            # derive per-cycle SOH from summary.QDischarge if needed.
+            "soh_pct": None,
+            "soh_method": None,                       # scalar SOH not meaningful over a cycling test
+            "cycle_count_at_test": 0,                 # test starts from BOL (fresh cell)
+            "test_year": 2018,
+            "n_samples": int(len(df)),
+            "duration_s": float(df["timestamp_s"].max() - df["timestamp_s"].min()),
+            "voltage_observed_min_V": float(np.nanmin(df["voltage_V"])),
+            "voltage_observed_max_V": float(np.nanmax(df["voltage_V"])),
+            "current_observed_min_A": float(np.nanmin(df["current_A"])),
+            "current_observed_max_A": float(np.nanmax(df["current_A"])),
+            "temperature_observed_min_C": float(np.nanmin(df["temperature_C"])),
+            "temperature_observed_max_C": float(np.nanmax(df["temperature_C"])),
+            "sample_dt_min_s": float(max(0.0, np.min(sample_dt))) if len(sample_dt) else None,
+            "sample_dt_median_s": float(np.median(sample_dt)) if len(sample_dt) else None,
+            "sample_dt_max_s": float(np.max(sample_dt)) if len(sample_dt) else None,
+            **_SOURCE_PROVENANCE,
+        })
+
+    return {
+        "cell_metadata": cells_metadata[0] if cells_metadata else {},
+        "cells_metadata": cells_metadata,
+        "test_metadata": test_metadata,
+        "timeseries": timeseries_by_test,
+    }

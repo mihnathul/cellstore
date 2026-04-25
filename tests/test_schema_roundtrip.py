@@ -1,7 +1,7 @@
 """Smoke test — runs the ORNL pipeline end-to-end and verifies that
 every harmonized output conforms to the published schema.
 
-This is the contract test for cellstore: it proves the pipeline produces
+This is the contract test for celljar: it proves the pipeline produces
 data that matches the schema declarations. If this test ever fails, either
 the pipeline drifted or the schema drifted — and they should be brought
 back into sync before any release.
@@ -12,11 +12,11 @@ fresh clone). HNEI requires a download and is not exercised here.
 
 from pathlib import Path
 
-import pandas as pd
+import polars as pl
 
-from cellstore.ingest.ornl_leaf import ingest
-from cellstore.harmonize.harmonize_ornl_leaf import harmonize
-from cellstore.harmonize.harmonize_schema import (
+from celljar.ingest.ornl_leaf import ingest
+from celljar.harmonize.harmonize_ornl_leaf import harmonize
+from celljar.harmonize.harmonize_schema import (
     CellMetadataSchema, TestMetadataSchema, TimeseriesSchema,
 )
 
@@ -38,17 +38,17 @@ def test_ornl_pipeline_produces_schema_valid_output():
     """
     # Stage 2 + 3: ingest → harmonize
     raw = ingest(str(ORNL_RAW))
-    harmonized = harmonize(raw, capacity_Ah=30.6)
+    harmonized = harmonize(raw, capacity_Ah=33.1)  # AESC pouch nominal (Zenodo)
 
     # Schema validation — these raise SchemaError if the data drifts from
     # the declared schema. That's the contract.
-    cell_meta_df = pd.DataFrame([harmonized["cell_metadata"]])
+    cell_meta_df = pl.DataFrame([harmonized["cell_metadata"]])
     CellMetadataSchema.validate(cell_meta_df)
 
     for test_dict in harmonized["test_metadata"]:
-        TestMetadataSchema.validate(pd.DataFrame([test_dict]))
+        TestMetadataSchema.validate(pl.DataFrame([test_dict]))
 
-    ts_df = pd.concat(harmonized["timeseries"].values(), ignore_index=True)
+    ts_df = pl.concat(list(harmonized["timeseries"].values()), how="vertical_relaxed")
     TimeseriesSchema.validate(ts_df)
 
     # Shape sanity — catches accidental data loss or misconfiguration

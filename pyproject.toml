@@ -3,53 +3,44 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "cellstore"
-version = "0.1.0"
-description = "Harmonizes battery test datasets into one canonical schema"
+name = "celljar"
+version = "0.2.0"
+description = "Public battery cell test data, harmonized and sealed in one schema (Parquet + JSON)."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.9"
 authors = [
-    { name = "Mihna Neerulpan" },
+    { name = "Mihna Neerulpan", email = "mihnathul@gmail.com" },
 ]
 keywords = [
     "battery",
     "battery-data",
-    "battery-testing",
-    "battery-degradation",
-    "battery-aging",
-    "battery-cycling",
-    "bms",
-    "battery-management-system",
-    "lithium-ion",
-    "lfp",
-    "nmc",
-    "nca",
     "electrochemistry",
     "data-harmonization",
     "open-data",
-    "hppc",
     "parquet",
-    "json-schema",
-    "open-schema",
-    "canonical-schema",
-    "soh",
-    "state-of-health",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Manufacturing",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Physics",
     "Topic :: Scientific/Engineering :: Chemistry",
     "Topic :: Database",
+    "Typing :: Typed",
 ]
 
 dependencies = [
+    "polars>=1.0",
     "pandas>=2.0",
     "pyarrow>=15.0",          # parquet
     "pandera>=0.18",          # runtime dataframe validation
@@ -60,6 +51,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "deptry>=0.20",
     "pytest>=8.0",
     "ruff>=0.3",
 ]
@@ -67,12 +59,24 @@ viewer = [
     "streamlit>=1.20",
     "plotly>=5.0",
     "duckdb>=0.10",           # parquet queries in the viewer
+    "huggingface-hub>=0.20",  # metadata fallback fetch when local is empty
 ]
 
 [project.urls]
-Repository = "https://github.com/mihnathul/cellstore"
-Issues = "https://github.com/mihnathul/cellstore/issues"
+Homepage = "https://github.com/mihnathul/celljar"
+Repository = "https://github.com/mihnathul/celljar"
+Issues = "https://github.com/mihnathul/celljar/issues"
+Changelog = "https://github.com/mihnathul/celljar/blob/main/CHANGELOG.md"
+Dataset = "https://huggingface.co/datasets/mihnathul/celljar"
 
 [tool.ruff]
 line-length = 100
 target-version = "py39"
+
+[tool.deptry]
+# apps/ uses sys.path-based sibling imports (it's not a package, it's a
+# streamlit script directory) — deptry can't follow those, so exclude.
+extend_exclude = ["apps", "examples", "scripts"]
+# Dev tools (dev) and viewer-only deps are not imported in the main package.
+# Listed as "dev groups" so deptry doesn't flag them as unused.
+optional_dependencies_dev_groups = ["dev", "viewer"]

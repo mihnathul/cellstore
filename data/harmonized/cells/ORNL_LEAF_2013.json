@@ -11,6 +11,6 @@
   "form_factor": "pouch",
   "nominal_capacity_Ah": 33.1,
   "nominal_voltage_V": null,
-  "max_voltage_V": 4.2,
-  "min_voltage_V": 3.0
+  "max_voltage_V": null,
+  "min_voltage_V": null
 }
