@@ -1,5 +1,4 @@
-streamlit>=1.20
-plotly>=5.0
-duckdb>=0.10
-pandas>=2.0
-pyarrow>=15.0
+# Streamlit Community Cloud only - installs celljar with viewer extras.
+# Local development uses `pip install -e ".[viewer]"`; pyproject.toml is the
+# authoritative source of truth.
+.[viewer]

@@ -1,178 +1,148 @@
-# cellstore
+# celljar
 
-**Harmonizes battery test datasets into one canonical schema.**
+[![PyPI](https://img.shields.io/pypi/v/celljar.svg)](https://pypi.org/project/celljar/)
+[![HuggingFace](https://img.shields.io/badge/🤗%20Dataset-celljar-yellow)](https://huggingface.co/datasets/mihnathul/celljar)
+[![Python](https://img.shields.io/pypi/pyversions/celljar.svg)](https://pypi.org/project/celljar/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Public battery data is scattered across labs and tools, each with its own format and column conventions. cellstore reads raw files from public sources like ORNL Leaf, HNEI Panasonic 18650PF, and MATR (Severson 2019) and writes them into one canonical schema: **cell metadata** (JSON), **test metadata** (JSON), **timeseries** (Parquet). Consumers read one format instead of writing per-source loaders and per-source column-name translations.
+**Public battery cell test data, harmonized and sealed in one schema (Parquet + JSON).**
 
-Just queryable, schema-validated data for downstream fitting, modeling, simulation, and/or analysis.
+celljar reads raw files from 9 published sources - ORNL Leaf, HNEI Kollmeyer, MATR (Severson 2019), CLO (Attia 2020), BILLS eVTOL, MOHTAT 2021, NASA PCoE, SNL Preger, Naumann - and writes them to a canonical schema with four entities: `cell_metadata` + `test_metadata` (JSON), `timeseries` + `cycle_summary` (Parquet). Query all sources via one SQL statement (DuckDB / pandas / Polars).
 
-## Motivation
-
-I wanted easily ingestible data from public battery datasets I care about, without rewriting a loader for each one - and a quick way to see what's in the dataset
-
-## Who this is intended for
-
-Anyone working with public battery lab data - researchers, BMS engineers, ML practitioners, or tool authors who want one consistent format across sources instead of writing a new loader for each dataset.
-
-Lab data only. Not for field/fleet telemetry.
+**Scope: harmonization only.** celljar focuses on measurements - unit conversion and schema normalization. It deliberately leaves fitting and modeling to downstream tools that specialize in those steps.
 
 ## Quick start
 
-```bash
-git clone https://github.com/mihnathul/cellstore.git
-cd cellstore
-pip install -e ".[viewer]"                # install package + viewer deps
-python examples/demo_end_to_end.py        # harmonize bundled ORNL data
-streamlit run apps/viewer.py              # optional: browse in the browser
+The full harmonized bundle lives at [huggingface.co/datasets/mihnathul/celljar](https://huggingface.co/datasets/mihnathul/celljar). Query it directly - no clone needed:
+
+```python
+import duckdb
+df = duckdb.sql("""
+    SELECT * FROM 'https://huggingface.co/datasets/mihnathul/celljar/resolve/main/timeseries.parquet'
+    WHERE test_id = 'ORNL_LEAF_2013_HPPC_25C'
+""").df()
 ```
 
-The demo is non-empty out of the box: the ORNL Leaf HPPC data is bundled in the repo, so the first run produces a harmonized cell + 3 tests + a parquet you can query. HNEI and MATR require their own downloads (links in the Sources table below) before the demo picks them up.
+Pandas and Polars work the same way against the HuggingFace URL.
+
+**Browser viewer** - clone the repo (a PyPI release is on the roadmap):
+
+```bash
+git clone https://github.com/mihnathul/celljar.git
+cd celljar
+pip install -e ".[viewer]"
+streamlit run apps/viewer.py    # fetches from HuggingFace by default
+```
+
+Pin a release for reproducibility: `CELLJAR_HF_REVISION=v0.2.1 streamlit run apps/viewer.py`.
+
+**Regenerate locally** from raw sources: same setup, then `python examples/demo_end_to_end.py` and `CELLJAR_LOCAL=1 streamlit run apps/viewer.py`.
 
 ## Sources
 
-Cell counts reflect the upstream dataset. Only the bundled source ships in the repo; others require a local download before `demo_end_to_end.py` harmonizes them.
-
-| Source | Chemistry | Cells (upstream) | Test type | Raw data |
+| Source | Chemistry | Cells | Test types | Raw data |
 |---|---|---|---|---|
-| ORNL Leaf | mixed (LMO/NCA pouch) | 1 | HPPC | bundled |
-| HNEI | NCA (Panasonic 18650PF) | 1 | HPPC | [download](data/raw/hnei/SOURCE_DATA_PROVENANCE.md) |
-| MATR (Severson 2019) | LFP (A123 18650) | 119 (124 - 5 excluded) | Fast-charge cycling | [download](data/raw/matr/SOURCE_DATA_PROVENANCE.md) |
-
-## Query the harmonized data
-
-Each cellstore record spans three files: cell metadata (hardware), test metadata (protocol, SOH, source provenance + license), and the timeseries parquet (V/I/T samples). They join on `cell_id` and `test_id`.
-
-**Get all artifacts for one test** - cell + test metadata + timeseries in a single query:
-
-```sql
-SELECT c.chemistry, c.nominal_capacity_Ah,
-       t.soh_pct, t.source_license, t.protocol_description,
-       ts.timestamp_s, ts.voltage_V, ts.current_A, ts.temperature_C
-FROM read_json('data/harmonized/cells/*.json')  c
-JOIN read_json('data/harmonized/tests/*.json')  t  ON c.cell_id = t.cell_id
-JOIN 'data/harmonized/timeseries.parquet'       ts ON t.test_id = ts.test_id
-WHERE t.test_id = 'ORNL_LEAF_2013_HPPC_25C'
-ORDER BY ts.timestamp_s;
-```
-
-**Get all tests for one cell** - list every test that ran on a given cell:
-
-```sql
-SELECT test_id, test_type, soh_pct, cycle_count_at_test,
-       temperature_C_min, n_samples, source_doi
-FROM read_json('data/harmonized/tests/*.json')
-WHERE cell_id = 'ORNL_LEAF_2013';
-```
-
-Same patterns work from Python - `pd.read_parquet(..., filters=[...])` for predicate-pushdown reads of the parquet, or `duckdb.sql(...).df()` to run the SQL above and get a DataFrame back.
-
-## Viewer
-
-The Streamlit app (`streamlit run apps/viewer.py`) gives you:
-
-- Cells and tests tables with sidebar filters (source, test type)
-- Self-contained ZIP-bundle download for any selected tests (cell + test metadata + timeseries together)
+| ORNL Leaf 2013 | mixed (LMO/NCA pouch) | 1 | HPPC × 3 temperatures | bundled |
+| HNEI (Kollmeyer) | NCA (Panasonic NCR18650PF) | 1 | HPPC, drive cycle, capacity_check, cycle_aging | [download](data/raw/hnei/SOURCE_DATA_PROVENANCE.md) |
+| MATR (Severson 2019) | LFP (A123 18650) | 119 | Cycling-to-failure | [download](data/raw/matr/SOURCE_DATA_PROVENANCE.md) |
+| CLO (Attia 2020) | LFP (A123 18650) | 45 | Cycling, BO-optimized fast-charge | [download](data/raw/clo/SOURCE_DATA_PROVENANCE.md) |
+| BILLS / eVTOL (Bills 2023) | NMC (Sony US18650VTC6) | 22 | Drive cycle (flight-duty) + RPTs | [download](data/raw/bills/SOURCE_DATA_PROVENANCE.md) |
+| MOHTAT (Mohtat 2021) | NMC (UMich NMC532 pouch) | 31 | Cycle aging + synchronous expansion | [download](data/raw/mohtat/SOURCE_DATA_PROVENANCE.md) |
+| NASA PCoE | LCO (vendor undisclosed, 2.0 Ah 18650) | 34 | Cycle aging | [download](data/raw/nasa_pcoe/SOURCE_DATA_PROVENANCE.md) |
+| SNL Preger 2020 | LFP / NMC / NCA grid (18650) | 87 | Cycle aging across T × DoD × C-rate | [download](data/raw/snl_preger/SOURCE_DATA_PROVENANCE.md) |
+| Naumann 2018/2020 | LFP / graphite | 17 calendar + 17 cycle | Calendar + cycle aging (summary-only) | [download](data/raw/naumann/SOURCE_DATA_PROVENANCE.md) |
 
 ## Schema
 
-Three entities, each a separate file.
-
-### `cell_metadata` - one JSON per cell
-
-| Field | Type | Notes |
-|---|---|---|
-| `cell_id` | str, unique | e.g. `HNEI_PANASONIC_18650PF`, `MATR_B1C0` |
-| `source` | enum | `ORNL`, `HNEI`, `MATR`, `CALCE`, `NASA`, `SNL` |
-| `source_cell_id` | str | publisher's own ID |
-| `manufacturer`, `model_number` | str | nullable |
-| `chemistry` | enum | `LFP`, `NMC`, `NCA`, `LCO`, `LMO`, `LTO`, `mixed` |
-| `cathode`, `anode`, `electrolyte` | str | nullable |
-| `form_factor` | enum | `cylindrical`, `pouch`, `prismatic`, `coin` |
-| `nominal_capacity_Ah`, `nominal_voltage_V`, `max_voltage_V`, `min_voltage_V` | float | nullable |
-
-### `test_metadata` - one JSON per test
-
-| Field | Type | Notes |
-|---|---|---|
-| `test_id` | str, unique | e.g. `HNEI_PANASONIC_18650PF_HPPC_-20C` |
-| `cell_id` | str | FK to cells |
-| `test_type` | enum | `cycling`, `hppc`, `gitt`, `eis`, `calendar`, `abuse`, `drive_cycle`, `checkup` |
-| `temperature_C_min/max`, `temperature_step_C` | float | protocol - nullable when not documented |
-| `soc_range_min/max`, `soc_step` | float | protocol - nullable |
-| `c_rate_charge`, `c_rate_discharge` | float | protocol - nullable |
-| `protocol_description` | str | human-readable |
-| `num_cycles` | int | |
-| `soh_pct` | float | cell SOH at time of test, `null` if it varies within the test |
-| `soh_method` | enum | how `soh_pct` was computed: `bol_assumption` (ORNL, HNEI fresh-cell characterization), `capacity_vs_first_checkpoint` (reserved for aging checkups), `resistance_pulse` (reserved for aged HPPC), or `null` |
-| `cycle_count_at_test` | int | cycles elapsed before this test; `0` = BOL |
-| `n_samples`, `duration_s` | | observed at harmonize time |
-| `voltage_observed_min_V`/`_max_V`, `current_observed_min_A`/`_max_A`, `temperature_observed_min_C`/`_max_C`, `sample_dt_median_s`/`_max_s` | | observed |
-| `source_doi`, `source_url`, `source_citation`, `source_license`, `source_license_url` | str | provenance - upstream dataset identity, how to cite it, its license |
-
-### `timeseries` - one Parquet for all tests
-
-| Column | Type | Notes |
-|---|---|---|
-| `test_id` | str | FK; filter on this |
-| `cycle_number` | int | |
-| `step_number` | nullable Int64 | many sources don't expose it |
-| `step_type` | enum | `charge`, `discharge`, `rest`, `pulse`, `ocv`, `unknown` |
-| `timestamp_s` | float | seconds elapsed from test start |
-| `voltage_V`, `current_A`, `temperature_C` | float | measured |
-| `capacity_Ah`, `energy_Wh` | float | cycler passthrough; nullable |
-| `flags` | str | nullable per-sample annotations (e.g. `S`=suspect, `Q`=queue transition); most samples have no flag |
-
-Conventions: current is positive = charge, negative = discharge. SI units. Timestamps are relative. Missing data is explicit `null`/`NaN`, never a sentinel. No derived fields (no SOC) - cellstore is fit-agnostic. Validation at write time: JSON Schemas in [`schemas/`](schemas/) are authoritative; Pandera models in [`cellstore/harmonize/harmonize_schema.py`](cellstore/harmonize/harmonize_schema.py) mirror them.
-
-## Project layout
+Four entities joined by `cell_id` and `test_id`:
 
 ```
-cellstore/
-  ingest/           one reader per source
-  harmonize/        one converter per source + Pandera schema
-schemas/            JSON Schema (authoritative)
-examples/
-  demo_end_to_end.py    ingest + harmonize + write
-apps/viewer.py      Streamlit viewer
-tests/              pytest smoke test
-data/
-  raw/<source>/     user-downloaded raw files (gitignored)
-  harmonized/       pipeline output (gitignored)
+cell_metadata.json       hardware (chemistry, capacity, form factor)
+test_metadata.json       protocol, SOH, provenance, license
+timeseries.parquet       V / I / T per-sample + signed running coulomb count (∫I dt)
+cycle_summary.parquet    per-cycle aggregates (capacity, R_DC, …) for aging studies
 ```
 
-## Add a new source
+**Conventions:** SI units. Timestamps relative. Missing data is explicit `null`. Current is positive = charge (into the cell), negative = discharge.
 
-1. Create `data/raw/<source>/SOURCE_DATA_PROVENANCE.md` with download instructions, license, and citation.
-2. `cellstore/ingest/<source>.py` - returns nested dicts keyed by cell/test.
-3. `cellstore/harmonize/harmonize_<source>.py` - returns `{cell_metadata, cells_metadata, test_metadata, timeseries}` matching the canonical schema. Populate `soh_pct` and `cycle_count_at_test` if derivable.
-4. Add the source to the `SOURCES` list in `examples/demo_end_to_end.py`.
-5. Add a row to the Sources table above.
+Authoritative field list + types in [`schemas/`](schemas/) (JSON Schema). Pandera mirrors at runtime in [`celljar/harmonize/harmonize_schema.py`](celljar/harmonize/harmonize_schema.py).
+
+## Querying
+
+```sql
+-- Single test's timeseries
+SELECT timestamp_s, voltage_V, current_A, temperature_C
+FROM 'data/harmonized/timeseries.parquet'
+WHERE test_id = 'ORNL_LEAF_2013_HPPC_25C'
+ORDER BY timestamp_s;
+```
+
+```sql
+-- Cross-source filter - same query works across all sources
+SELECT cell_id, test_id, temperature_C_min
+FROM 'data/harmonized/tests/*.json'
+WHERE test_type = 'hppc' AND temperature_C_min = 25;
+```
+
+Same patterns from Python via `duckdb.sql(...).df()` or `pl.read_parquet(..., filters=[...])`.
+
+## Use cases
+
+Parameterization · modeling · aging studies · cross-source analysis.
+
+**Out of scope:** field/fleet telemetry; ML cycling-life prediction (use [BatteryLife (KDD 2025)](https://github.com/Ruifeng-Tan/BatteryLife) - 990 cells, 18 baselines). OCV/R0 extractors, ECM/SPM/DFN fitting, ML modeling all live in separate companion repos.
+
+## How this relates to other battery data tools
+
+celljar tries to fit alongside, not replace, the other excellent tools in this space:
+
+- **[Battery Data Commons](https://batterycommons.github.io/)** - registry indexing 300+ public battery datasets. Great for discovery; celljar complements it by providing a harmonized data layer for a subset of those sources.
+- **[Iontech](https://github.com/shiyunliu-battery/Iontech)** (Shiyun Liu) - curated index of open-source battery monitoring & modeling datasets (RWTH home-storage, NREL failure databank, Stanford second-life, etc.) with paper links. Another good starting point for discovering datasets celljar hasn't yet harmonized.
+- **[BatteryLife](https://github.com/Ruifeng-Tan/BatteryLife) / [BatteryML](https://github.com/microsoft/BatteryML)** - cycling-to-failure ML benchmark (KDD 2025). Optimized for lifetime-prediction ML; celljar keeps the full V/I/T timeseries that physics-based parameterization (ECM/SPM/DFN) needs.
 
 ## Roadmap
 
-- CALCE, NASA, SNL ingesters
-- Per-cycle summary aggregates
-- HuggingFace Datasets publication
-- **SOH methodology** - current approach needs more thought and iteration to appropriately tag test datasets across tests and test types.
+- More sources (CALCE, RWTH, HUST, Tongji, XJTU; Ecker 2015 + Chen 2020 for DFN parameterization)
+- PyPI release (`pip install celljar`)
+- SOH methodology iteration
+- BDF-export converter
 
-## License
+## Contributing
 
-MIT ([`LICENSE`](LICENSE)). Upstream source data retains each publisher's original license - see the per-source README in `data/raw/<source>/` for the citation.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Issues, ideas, and PRs welcome.
+
+## License & citation
+
+The science here belongs to the original authors; celljar simply puts their data in one place with a shared schema. Please cite their papers when you use the data, and, if it's helpful, celljar alongside.
+
+- **celljar code** (this repository): MIT ([`LICENSE`](LICENSE)).
+- **Harmonized bundle** (packaging, schema, derived fields): CC-BY-4.0.
+- **Upstream raw data** retains each publisher's original license - see per-source provenance in `data/raw/<source>/`.
+
+To make attribution easy, every `test_metadata` row carries its own `source_doi`, `source_citation`, `source_license`, and `source_license_url`. You can pull the references for any analysis with one query:
+
+```python
+import duckdb
+duckdb.sql("""
+    SELECT DISTINCT source_doi, source_citation, source_license
+    FROM 'data/harmonized/tests/*.json'
+    WHERE test_id IN ('ORNL_LEAF_2013_HPPC_25C', 'HNEI_NCA_HPPC_25C')
+""").df()
+```
+
+If you'd like to cite celljar:
+
+```bibtex
+@software{celljar,
+  author = {Mihna Neerulpan},
+  title  = {celljar: Public Battery Test Dataset Harmonization with a Canonical Schema},
+  year   = {2026},
+  url    = {https://github.com/mihnathul/celljar},
+}
+```
 
 ## Acknowledgments
 
-- Phillip Kollmeyer - Panasonic NCR18650PF data (HNEI / UW Madison)
-- G. Wiggins, S. Allu, H. Wang - 2013 Nissan Leaf data (ORNL)
-- K. Severson, P. Attia et al. - fast-charging dataset (Stanford / MIT / TRI)
+celljar exists because of the labs and authors who designed, ran, and openly published these experiments - work that took years of careful instrumentation and analysis. Thank you to:
 
-## Citation
-
-```bibtex
-@software{cellstore,
-
-  author = {Mihna Neerulpan},
-  title  = {cellstore: Public Battery Test Dataset Harmonization with a Canonical Schema},
-  year   = {2026},
-  url    = {https://github.com/mihnathul/cellstore},
-}
-```
+Phillip Kollmeyer (HNEI) · G. Wiggins, S. Allu, H. Wang (ORNL) · K. Severson, P. Attia et al. (MATR, CLO; Stanford / MIT / TRI) · A. Bills et al. (BILLS; CMU) · P. Mohtat et al. (UMich) · B. Saha, K. Goebel (NASA PCoE) · Y. Preger et al. (Sandia) · M. Naumann et al. (TUM) · M. Ecker et al. (RWTH Aachen)

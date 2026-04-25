@@ -48,12 +48,13 @@ data/raw/**/*.txt
 # ORNL Leaf is the one bundled source — un-ignore its CSVs
 !data/raw/ornl_leaf/*.csv
 
-# Harmonized outputs — users regenerate locally by running the demo.
-# Exception: ORNL_LEAF and HNEI are bundled (ORNL raw CSVs ship in the
-# repo so the demo works on fresh clone; HNEI harmonized ships so the
-# v0.1 bundle spans both sources). timeseries.parquet is tracked as-is.
-# Users who regenerate with additional sources (e.g. MATR) will see a
-# local diff — that's their work, not meant to be committed.
+# Harmonized outputs — users regenerate locally via the demo, OR
+# download the full bundle from HuggingFace (huggingface.co/datasets/
+# mihnathul/celljar). Bundled exception: ORNL_LEAF and HNEI metadata
+# JSONs ship in the repo so a fresh clone has at least 2 sources of
+# example metadata to inspect without running the demo. The actual
+# timeseries / cycle_summary parquet files are NOT in git (too large —
+# 3+ GB regenerated; HF is the proper distribution).
 data/harmonized/cells/*.json
 data/harmonized/tests/*.json
 data/harmonized/timeseries/
@@ -66,8 +67,6 @@ data/harmonized/timeseries/
 data/params/
 data/exports/
 *.parquet
-!schemas/*.parquet
-!data/harmonized/timeseries.parquet
 
 # Streamlit runtime secrets (keep config.toml)
 .streamlit/secrets.toml

@@ -1,4 +1,4 @@
-# ORNL_LEAF — 2013 Nissan Leaf cell data (bundled)
+# ORNL_LEAF - 2013 Nissan Leaf cell data (bundled)
 
 The one source whose raw files ship directly in this directory. No download required.
 
@@ -14,7 +14,7 @@ The one source whose raw files ship directly in this directory. No download requ
 
 ## Where to get the data
 
-Already here — bundled in this directory. Upstream mirror:
+Already here - bundled in this directory. Upstream mirror:
 
     https://zenodo.org/records/2580327
 
@@ -29,7 +29,7 @@ DOI: `10.5281/zenodo.2580327`. See also GitHub: https://github.com/batterysim/ni
     cell-discharge-bitrode-2c.csv
     cell-discharge-bitrode-3c.csv
 
-cellstore uses the three HPPC files, producing three `test_type: hppc` tests.
+celljar uses the three HPPC files, producing three `test_type: hppc` tests.
 
 ## Test protocol
 

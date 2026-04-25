@@ -1,19 +1,18 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/mihnathul/cellstore/schemas/test_metadata.schema.json",
+  "$id": "https://github.com/mihnathul/celljar/schemas/test_metadata.schema.json",
   "title": "TestMetadata",
-  "description": "One test's metadata record (cell × protocol × temperature). Stored as JSON at data/harmonized/tests/{test_id}.json — one file per test.",
+  "description": "One test's metadata record (cell × protocol × temperature). Stored as JSON at data/harmonized/tests/{test_id}.json - one file per test.",
   "type": "object",
   "properties": {
-    "test_id": {"type": "string", "description": "Canonical cellstore test identifier (unique)."},
+    "test_id": {"type": "string", "description": "Canonical celljar test identifier (unique)."},
     "cell_id": {"type": "string", "description": "FK to cells (one-to-many)."},
     "test_type": {
       "type": "string",
-      "enum": ["cycling", "hppc", "gitt", "eis", "calendar", "abuse", "drive_cycle", "checkup"]
+      "enum": ["cycle_aging", "hppc", "calendar_aging", "drive_cycle", "capacity_check"]
     },
     "temperature_C_min": {"type": ["number", "null"]},
     "temperature_C_max": {"type": ["number", "null"]},
-    "temperature_step_C": {"type": ["number", "null"], "minimum": 0},
     "soc_range_min": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
     "soc_range_max": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
     "soc_step": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
@@ -25,17 +24,19 @@
     "soh_pct": {"type": ["number", "null"], "minimum": 0, "maximum": 150,
                  "description": "Cell state of health at time of test, as % of BOL capacity. See soh_method for how this specific value was computed."},
     "soh_method": {"type": ["string", "null"],
-                    "enum": ["capacity_vs_first_checkpoint", "bol_assumption", "resistance_pulse", null],
-                    "description": "How soh_pct was computed: 'bol_assumption' = stamped 100% because the test is a single fresh-cell characterization (ORNL, HNEI); 'capacity_vs_first_checkpoint' = CC discharge capacity normalized by the cell's first checkpoint (reserved for aging-checkup sources); 'resistance_pulse' = derived from pulse ΔV/ΔI vs BOL (reserved for future aged-HPPC sources like NASA PCoE); null when soh_pct itself is null."},
+                    "enum": ["capacity_vs_first_checkpoint", "bol_assumption", null],
+                    "description": "How soh_pct was computed: 'bol_assumption' = stamped 100% because the test is a single fresh-cell characterization (ORNL, HNEI); 'capacity_vs_first_checkpoint' = CC discharge capacity normalized by the cell's first checkpoint; null when soh_pct itself is null."},
     "cycle_count_at_test": {"type": ["integer", "null"], "minimum": 0,
                              "description": "Aging cycles elapsed before this test. 0 = BOL (begin of life) / fresh cell characterization."},
+    "test_year": {"type": ["integer", "null"], "minimum": 2000, "maximum": 2100,
+                  "description": "Year the test was actually run (not the paper publication year). Useful for filtering by data recency and accounting for cell-vintage drift."},
 
     "source_doi": {"type": ["string", "null"],
                     "description": "DOI of the paper or dataset that published this test."},
     "source_url": {"type": ["string", "null"],
                     "description": "Canonical landing page URL for the source dataset."},
     "source_citation": {"type": ["string", "null"],
-                         "description": "Formatted citation for the source test — include in any publication using this data."},
+                         "description": "Formatted citation for the source test - include in any publication using this data."},
     "source_license": {"type": ["string", "null"],
                         "description": "SPDX identifier for the test's license (e.g. CC-BY-4.0, ODbL-1.0, MIT, CC0-1.0)."},
     "source_license_url": {"type": ["string", "null"],
@@ -51,10 +52,12 @@
     "current_observed_max_A": {"type": ["number", "null"]},
     "temperature_observed_min_C": {"type": ["number", "null"]},
     "temperature_observed_max_C": {"type": ["number", "null"]},
+    "sample_dt_min_s": {"type": ["number", "null"], "minimum": 0,
+                        "description": "Observed: minimum dt between consecutive samples - fastest sampling rate."},
     "sample_dt_median_s": {"type": ["number", "null"], "minimum": 0,
                            "description": "Observed: median dt between consecutive samples."},
     "sample_dt_max_s": {"type": ["number", "null"], "minimum": 0,
-                        "description": "Observed: maximum dt — large values flag sampling gaps."}
+                        "description": "Observed: maximum dt - large values flag sampling gaps."}
   },
   "required": ["test_id", "cell_id", "test_type"],
   "additionalProperties": false

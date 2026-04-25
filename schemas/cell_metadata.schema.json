@@ -1,17 +1,17 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/mihnathul/cellstore/schemas/cell_metadata.schema.json",
+  "$id": "https://github.com/mihnathul/celljar/schemas/cell_metadata.schema.json",
   "title": "CellMetadata",
-  "description": "One cell's metadata record (specs, chemistry, form factor). Stored as JSON at data/harmonized/cells/{cell_id}.json — one file per cell.",
+  "description": "One cell's metadata record (specs, chemistry, form factor). Stored as JSON at data/harmonized/cells/{cell_id}.json - one file per cell.",
   "type": "object",
   "properties": {
     "cell_id": {
       "type": "string",
-      "description": "Canonical cellstore identifier (unique across all sources)."
+      "description": "Canonical celljar identifier (unique across all sources)."
     },
     "source": {
       "type": "string",
-      "enum": ["CALCE", "HNEI", "MATR", "NASA", "ORNL", "SNL"],
+      "enum": ["BILLS", "CLO", "ECKER", "HNEI", "MATR", "MOHTAT", "NAUMANN", "NASA_PCOE", "ORNL", "SNL_PREGER"],
       "description": "Dataset source."
     },
     "source_cell_id": {"type": ["string", "null"], "description": "Identifier in the source dataset."},
